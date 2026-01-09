@@ -1,26 +1,18 @@
-import React from 'react';
-import Link from "next/link";
+"use client";
 
-const GameMenu = () => {
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function GameMenu() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/game/play');
+  }, [router]);
+
   return (
-    <div className="text-xl flex flex-col items-center justify-center min-h-screen text-center gap-4">
-      <Link
-        href="/"
-        className="block hover:underline"
-      >
-        Back to Home
-        <br /><br />
-      </Link>
-
-      <Link
-        href="/game/play"
-        className="block hover:underline"
-      >
-        Play
-        <br /><br />
-      </Link>
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <p className="text-xl text-gray-500 font-mono animate-pulse">Loading Game...</p>
     </div>
   );
-};
-
-export default GameMenu;
+}
