@@ -53,7 +53,6 @@ export default function Home() {
       ) : (
         <div className="flex flex-col gap-6 items-center">
            <SketchButton text="START GAME" href="/game" />
-           <SketchButton text="LOGIN / SIGN UP" href="/login" />
         </div>
       )}
 

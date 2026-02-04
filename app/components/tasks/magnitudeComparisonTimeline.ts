@@ -45,6 +45,51 @@ const buttonsCSS = `
       transform: translateY(2px) !important;
       box-shadow: 4px 4px 0px rgba(0,0,0,0.18) !important;
     }
+
+    .mc-title {
+      font-size: clamp(28px, 6.5vw, 40px);
+      font-weight: 900;
+      color: #2563eb;
+      margin-bottom: 10px;
+      line-height: 1.15;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .mc-question {
+      font-size: clamp(24px, 6vw, 36px);
+      font-weight: 900;
+      color: #2563eb;
+      margin-bottom: 22px;
+      text-align: center;
+      line-height: 1.15;
+      letter-spacing: 1px;
+    }
+
+    .mc-cards {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .mc-cards {
+        gap: 12px;
+      }
+
+      .mc-card {
+        min-width: 44vw !important;
+        height: 200px !important;
+        padding: 18px !important;
+      }
+
+      .mc-value {
+        transform: scale(0.85);
+        transform-origin: center;
+      }
+    }
   </style>
 `;
 
@@ -62,6 +107,9 @@ type BuildOptions = {
 
   // NEW: customize the title on the intro screen
   introTitle?: string;
+
+  // NEW: deterministic order/side randomization
+  orderSeed?: string | number;
 };
 
 export function buildMagnitudeComparisonTimeline(options: BuildOptions = {}) {
@@ -71,7 +119,37 @@ export function buildMagnitudeComparisonTimeline(options: BuildOptions = {}) {
     phase = "magnitude_compare",
     showIntro = true,
     introTitle = "MAGNITUDE COMPARISON",
+    orderSeed,
   } = options;
+
+  const createRng = (seedInput?: string | number): (() => number) => {
+    if (seedInput === undefined || seedInput === null) return Math.random;
+    const seedStr = String(seedInput);
+    let h = 2166136261;
+    for (let i = 0; i < seedStr.length; i += 1) {
+      h ^= seedStr.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    let state = h >>> 0;
+    return () => {
+      state += 0x6d2b79f5;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  const rng = createRng(orderSeed);
+
+  const shuffle = <T,>(arr: T[], rng: () => number = Math.random): T[] => {
+    const out = arr.slice();
+    for (let i = out.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  };
 
   // 1) Start from Protocol trials (cross + within)
   let trials = COMPARISON_TRIALS.slice();
@@ -79,11 +157,14 @@ export function buildMagnitudeComparisonTimeline(options: BuildOptions = {}) {
   // 2) Optional block filter
   if (block) trials = trials.filter((t) => t.block === block);
 
-  // 3) Optional limit for quick tests
+  // 3) Shuffle order so each run is randomized
+  trials = shuffle(trials, rng);
+
+  // 4) Optional limit for quick tests
   if (typeof limit === "number") trials = trials.slice(0, limit);
 
-  // 4) Randomize left/right *per trial*
-  const randomized = trials.map((t) => randomizeSides(t));
+  // 5) Randomize left/right *per trial*
+  const randomized = trials.map((t) => randomizeSides(t, rng));
 
   // 5) Build jsPsych timeline
   const timeline: any[] = [];
@@ -95,7 +176,7 @@ export function buildMagnitudeComparisonTimeline(options: BuildOptions = {}) {
       stimulus: `
         ${buttonsCSS}
         <div style="padding: 30px; text-align: center;">
-          <h2 style="font-size: 40px; font-weight: 900; color: #2563eb; margin-bottom: 10px;">${introTitle}</h2>
+          <h2 class="mc-title">${introTitle}</h2>
           <p style="font-size: 22px; color: #333;">Pick which value is larger.</p>
           <p style="font-size: 16px; color: #666; margin-top: 8px;">Tap a button to begin.</p>
         </div>
@@ -123,14 +204,12 @@ export function buildMagnitudeComparisonTimeline(options: BuildOptions = {}) {
       stimulus: `
         ${buttonsCSS}
 
-        <h2 style="font-size: 36px; font-weight: 900; color: #2563eb; margin-bottom: 22px; text-align:center;">
-          WHICH ONE IS LARGER?
-        </h2>
+        <h2 class="mc-question">WHICH ONE IS LARGER?</h2>
 
-        <div style="display: flex; gap: 40px; justify-content: center; align-items: center;">
-          <div style="${cardStyle}">${renderValueHTML(t.left)}</div>
+        <div class="mc-cards">
+          <div class="mc-card" style="${cardStyle}"><div class="mc-value">${renderValueHTML(t.left)}</div></div>
           <!-- Removed "VS" per Schiller request -->
-          <div style="${cardStyle}">${renderValueHTML(t.right)}</div>
+          <div class="mc-card" style="${cardStyle}"><div class="mc-value">${renderValueHTML(t.right)}</div></div>
         </div>
 
         <p style="${instructionStyle}; text-align:center;">

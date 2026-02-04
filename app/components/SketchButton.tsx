@@ -82,7 +82,13 @@ const SketchButton: React.FC<SketchButtonProps> = ({ text, onClick, href }) => {
     </>
   );
 
-  return href ? <a href={href}>{ButtonContent}</a> : ButtonContent;
+  return href ? (
+    <a href={href} target="_self" rel="noopener noreferrer">
+      {ButtonContent}
+    </a>
+  ) : (
+    ButtonContent
+  );
 };
 
 export default SketchButton;

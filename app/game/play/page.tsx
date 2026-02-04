@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 //NEW LINE '
 
 import dynamic from "next/dynamic";
@@ -26,12 +26,27 @@ function fmtNum(x: any, decimals = 0) {
 export default function GamePage() {
   const [experimentFinished, setFinished] = useState(false);
   const [results, setResults] = useState<any>(null);
+  const [participantId, setParticipantId] = useState<string | null>(null);
 
   const handleFinish = (data: any) => {
     setFinished(true);
     setResults(data);
     console.log("Experiment Data (raw):", data?.raw?.values?.() ?? data);
   };
+
+  useEffect(() => {
+    let last = "";
+    const tick = () => {
+      const pid = ((window as any).__participantId ?? "").toString().trim();
+      if (pid && pid !== last) {
+        last = pid;
+        setParticipantId(pid);
+      }
+    };
+    const id = window.setInterval(tick, 300);
+    tick();
+    return () => window.clearInterval(id);
+  }, []);
 
   const s = results?.summary;
 
@@ -40,6 +55,7 @@ export default function GamePage() {
 
   const postC = s?.post?.comparison;
   const postE = s?.post?.estimation;
+  const displayId = participantId ?? s?.participantId ?? "Guest";
 
   return (
     <div className="flex min-h-screen bg-[#F0F2F6]">
@@ -49,22 +65,18 @@ export default function GamePage() {
 
         <div className="text-sm text-gray-600 space-y-2">
           <p>
-            <strong>User:</strong>{" "}
+            <strong>ID:</strong>{" "}
             <span className="font-mono bg-gray-100 p-1 rounded">
-              {s?.participantId ?? "Guest"}
+              {displayId}
             </span>
           </p>
           <p>
             <strong>Status:</strong> {experimentFinished ? "✅ Complete" : "▶️ In Progress"}
           </p>
-          <p>
-            <strong>Consented:</strong>{" "}
-            {typeof s?.consented === "boolean" ? (s.consented ? "Yes" : "No") : "N/A"}
-          </p>
         </div>
 
         <div className="mt-auto">
-          <SketchButton text="EXIT" href="/game" />
+          <SketchButton text="EXIT" href="/" />
         </div>
       </aside>
 
@@ -151,7 +163,7 @@ export default function GamePage() {
 
             <div className="flex justify-center gap-4 mt-8">
               <SketchButton text="PLAY AGAIN" onClick={() => window.location.reload()} />
-              <SketchButton text="EXIT" href="/game" />
+              <SketchButton text="EXIT" href="/" />
             </div>
           </div>
         )}

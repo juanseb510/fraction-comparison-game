@@ -273,33 +273,59 @@ function notationLabel(n: Notation): 'Fraction' | 'Decimal' | 'Percentage' {
   return 'Percentage';
 }
 
-export function buildComparisonTrials(): ComparisonTrial[] {
-  const trials: ComparisonTrial[] = [];
-  let derivedId = 9000; // IDs for derived within-notation trials
+const COMPARISON_RAW_PAIRS: Array<{ left: string; right: string }> = [
+  { left: "3/8", right: "2/5" },
+  { left: "3/8", right: "40%" },
+  { left: "38%", right: "2/5" },
+  { left: "38%", right: "40%" },
+  { left: ".38", right: ".4" },
+  { left: ".40", right: "38%" },
+  { left: "40%", right: ".38" },
+  { left: "2/5", right: ".38" },
+  { left: ".4", right: "3/8" },
+  { left: "5/8", right: "4/5" },
+  { left: "5/8", right: "80%" },
+  { left: "63%", right: "4/5" },
+  { left: "63%", right: "80%" },
+  { left: ".63", right: ".8" },
+  { left: "63%", right: ".8" },
+  { left: ".6", right: "80%" },
+  { left: ".6", right: "4/5" },
+  { left: "5/8", right: ".8" },
+];
 
-  for (const bp of BASE_PAIRS) {
-    const L = bp.larger;
-    const S = bp.smaller;
-
-    // (A) Cross-notation trials from CSV (6 per base)
-    trials.push(
-      { id: bp.relationMeta['Fraction > Decimal'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Fraction > Decimal', left: L.F, right: S.D, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Fraction > Decimal'].wnb, decimalDigits: bp.relationMeta['Fraction > Decimal'].decimalDigits, source: 'csv-cross' } },
-      { id: bp.relationMeta['Fraction > Percentage'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Fraction > Percentage', left: L.F, right: S.P, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Fraction > Percentage'].wnb, decimalDigits: bp.relationMeta['Fraction > Percentage'].decimalDigits, source: 'csv-cross' } },
-      { id: bp.relationMeta['Decimal > Fraction'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Decimal > Fraction', left: L.D, right: S.F, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Decimal > Fraction'].wnb, decimalDigits: bp.relationMeta['Decimal > Fraction'].decimalDigits, source: 'csv-cross' } },
-      { id: bp.relationMeta['Decimal > Percentage'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Decimal > Percentage', left: L.D, right: S.P, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Decimal > Percentage'].wnb, decimalDigits: bp.relationMeta['Decimal > Percentage'].decimalDigits, source: 'csv-cross' } },
-      { id: bp.relationMeta['Percentage > Fraction'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Percentage > Fraction', left: L.P, right: S.F, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Percentage > Fraction'].wnb, decimalDigits: bp.relationMeta['Percentage > Fraction'].decimalDigits, source: 'csv-cross' } },
-      { id: bp.relationMeta['Percentage > Decimal'].problemNumber, block: bp.block, distance: bp.distance, relation: 'Percentage > Decimal', left: L.P, right: S.D, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { wnbConsistent: bp.relationMeta['Percentage > Decimal'].wnb, decimalDigits: bp.relationMeta['Percentage > Decimal'].decimalDigits, source: 'csv-cross' } },
-    );
-
-    // (B) Within-notation trials (derived) — satisfies the Protocol requirement
-    trials.push(
-      { id: derivedId++, block: bp.block, distance: bp.distance, relation: 'Fraction vs Fraction', left: L.F, right: S.F, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { source: 'derived-within' } },
-      { id: derivedId++, block: bp.block, distance: bp.distance, relation: 'Decimal vs Decimal', left: L.D, right: S.D, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { source: 'derived-within' } },
-      { id: derivedId++, block: bp.block, distance: bp.distance, relation: 'Percentage vs Percentage', left: L.P, right: S.P, leftVal: L.value, rightVal: S.value, correctSide: 'left', meta: { source: 'derived-within' } },
-    );
+function parseStimulusValue(raw: string): number {
+  const value = raw.trim();
+  if (value.includes("/")) {
+    const [n, d] = value.split("/").map((v) => Number(v.trim()));
+    return d === 0 ? 0 : n / d;
   }
+  if (value.endsWith("%")) {
+    const pct = Number(value.replace("%", "").trim());
+    return pct / 100;
+  }
+  return Number(value);
+}
 
-  return trials;
+export function buildComparisonTrials(): ComparisonTrial[] {
+  let id = 1;
+  return COMPARISON_RAW_PAIRS.map(({ left, right }) => {
+    const leftVal = parseStimulusValue(left);
+    const rightVal = parseStimulusValue(right);
+    const correctSide: Side = leftVal >= rightVal ? "left" : "right";
+    return {
+      id: id++,
+      block: "Custom",
+      distance: "Custom",
+      relation: "Custom",
+      left,
+      right,
+      leftVal,
+      rightVal,
+      correctSide,
+      meta: { source: "custom" },
+    };
+  });
 }
 
 export function buildEstimationTrials(): EstimationTrial[] {
@@ -331,6 +357,5 @@ export const COMPARISON_TRIALS: ComparisonTrial[] = buildComparisonTrials();
 export const ESTIMATION_TRIALS: EstimationTrial[] = buildEstimationTrials();
 
 // Note on length:
-// - COMPARISON_TRIALS = 8 bases * (6 cross + 3 within) = 72
-// - ESTIMATION_TRIALS = 8 bases * (2 values * 3 notations) = 48
-// If this is too long for a screener, we can add a sampler later (e.g., pick N per condition).
+// - COMPARISON_TRIALS uses the custom list above (18 pairs)
+// - ESTIMATION_TRIALS still derives from BASE_PAIRS (48 total)
